@@ -25,6 +25,16 @@ app.post('/fingerprint', (req, res) => {
         res.status(200).send("Fingerprint received");
     });
 });
+// Login Route
+app.post('/login', (req, res) => {
+    const { username, password } = req.body;
+
+    if (username === 'Abiram' && password === 'abi18') {
+        return res.status(200).send("Login successful");
+    } else {
+        return res.status(401).json({ message: "Invalid username or password" });
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
