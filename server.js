@@ -12,12 +12,9 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // MongoDB connection
-mongoose.connect("mongodb+srv://vedha:sivajivaailajelebi@cluster0.mongodb.net/fingerprintDB?retryWrites=true&w=majority", {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log("✅ Connected to MongoDB Atlas"))
-.catch((err) => console.error("❌ MongoDB connection error:", err));
+mongoose.connect("mongodb+srv://jacksparrow:sivajivaailajelebi@cluster0.tklkrqn.mongodb.net/devicefp?retryWrites=true&w=majority&appName=Cluster0")
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // Schema
 const Fingerprint = mongoose.model("Fingerprint", new mongoose.Schema({
