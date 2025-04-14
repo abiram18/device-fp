@@ -1,32 +1,66 @@
 const express = require("express");
 const cors = require("cors");
+const mongoose = require("mongoose");
 const path = require("path");
+
 const app = express();
+const PORT = process.env.PORT || 10000;
 
-const PORT = process.env.PORT || 3000;
-
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-app.post("/", (req, res) => {
-  console.log("📥 Device Data Received:", req.body);
-  res.json({ message: "📬 Data received successfully" });
+// MongoDB connection
+mongoose.connect("mongodb+srv://vedha:sivajivaailajelebi@cluster0.mongodb.net/fingerprintDB?retryWrites=true&w=majority", {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log("✅ Connected to MongoDB Atlas"))
+.catch((err) => console.error("❌ MongoDB connection error:", err));
+
+// Schema
+const Fingerprint = mongoose.model("Fingerprint", new mongoose.Schema({
+  timestamp: String,
+  fingerprint: String,
+  deviceInfo: Object,
+}));
+
+// Routes
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.get("/login", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
+app.post("/", async (req, res) => {
+  const { timestamp, fingerprint, deviceInfo } = req.body;
+
+  try {
+    const fp = new Fingerprint({
+      timestamp,
+      fingerprint,
+      deviceInfo,
+    });
+    await fp.save();
+    res.json({ message: "Fingerprint saved to DB" });
+  } catch (err) {
+    console.error("❌ Error saving fingerprint:", err);
+    res.status(500).json({ error: "Failed to save fingerprint" });
+  }
 });
 
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
-  // Just a mock login for now
-  if (username === "abi" && password === "abi18") {
-    res.json({ message: "✅ Login successful" });
-  } else {
-    res.status(401).json({ message: "❌ Invalid credentials" });
-  }
-});
 
-// Serve index.html for all other routes
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  // Simple login check (can replace with DB logic)
+  if (username === "admin" && password === "password") {
+    res.json({ message: "Login successful" });
+  } else {
+    res.status(401).json({ message: "Invalid credentials" });
+  }
 });
 
 app.listen(PORT, () => {
