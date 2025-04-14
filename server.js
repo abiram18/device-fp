@@ -1,18 +1,17 @@
 const express = require('express');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 const cors = require('cors');
 const app = express();
 
-// Use the port assigned by the environment or default to 3000 for local development
+// Use the dynamic port provided by Render or default to 3000
 const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0'; // Use 0.0.0.0 for Render or cloud environments
+const HOST = '0.0.0.0';
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'))); // Ensure 'public' folder is served
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Your existing routes for fingerprint and login
 app.post('/fingerprint', (req, res) => {
     const { fingerprint, deviceInfo } = req.body;
     const entry = {
@@ -31,7 +30,6 @@ app.post('/fingerprint', (req, res) => {
     });
 });
 
-// Login Route
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
 
@@ -42,9 +40,9 @@ app.post('/login', (req, res) => {
     }
 });
 
-// Serve index.html for any other routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Serve static files from the 'public' directory
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Start the server
