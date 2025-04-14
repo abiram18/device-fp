@@ -149,7 +149,7 @@ const currentFingerprint = await generateHash(hashInfo);
       }
 
       // Send to backend
-      fetch("http://localhost:3000/fingerprint", {
+      fetch("https://device-fp.onrender.com", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
