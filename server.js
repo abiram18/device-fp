@@ -1,53 +1,34 @@
-const express = require('express');
-const fs = require('fs');
-const cors = require('cors');
-const path = require('path');
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
 const app = express();
-const PORT = process.env.PORT || 10000;
-const HOST = '0.0.0.0';
+
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
 
-// Serve static files from the "public" directory
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Login route
-app.post('/login', (req, res) => {
-    const { username, password } = req.body;
-
-    // Simple check for hardcoded username and password
-    if (username === 'abi' && password === 'abi18') {
-        return res.status(200).send({ message: "Login successful" });
-    } else {
-        return res.status(401).json({ message: "Invalid username or password" });
-    }
+app.post("/", (req, res) => {
+  console.log("📥 Device Data Received:", req.body);
+  res.json({ message: "📬 Data received successfully" });
 });
 
-// Fingerprint route (for logging device info)
-app.post('/fingerprint', (req, res) => {
-    const { fingerprint, deviceInfo } = req.body;
-    const entry = {
-        timestamp: new Date().toISOString(),
-        fingerprint,
-        deviceInfo
-    };
-
-    fs.appendFile('fingerprint_logs.json', JSON.stringify(entry) + '\n', (err) => {
-        if (err) {
-            console.error("❌ Error writing to file:", err);
-            return res.status(500).send("Error saving data");
-        }
-        console.log("✅ Fingerprint logged:", entry);
-        res.status(200).send("Fingerprint received");
-    });
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+  // Just a mock login for now
+  if (username === "abi" && password === "abi18") {
+    res.json({ message: "✅ Login successful" });
+  } else {
+    res.status(401).json({ message: "❌ Invalid credentials" });
+  }
 });
 
-// Catch-all route to serve the login page (index.html)
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Serve index.html for all other routes
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(PORT, HOST, () => {
-    console.log(`🚀 Server running on http://${HOST}:${PORT}`);
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
 });
