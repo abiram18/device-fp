@@ -4,15 +4,16 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0';
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from the 'public' directory
+// Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// POST route to log fingerprint data
+// API to log fingerprint
 app.post('/fingerprint', (req, res) => {
   const { fingerprint, deviceInfo } = req.body;
   const entry = {
@@ -31,10 +32,9 @@ app.post('/fingerprint', (req, res) => {
   });
 });
 
-// POST route for user login
+// Login route
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
-
   if (username === 'abi' && password === 'abi18') {
     return res.status(200).send("Login successful");
   } else {
@@ -42,14 +42,11 @@ app.post('/login', (req, res) => {
   }
 });
 
-// Catch-all route to serve index.html for SPA routing
+// Serve index.html for all other routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start the server
-const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0';
 app.listen(PORT, HOST, () => {
   console.log(`🚀 Server running on http://${HOST}:${PORT}`);
 });
