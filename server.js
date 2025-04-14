@@ -1,7 +1,7 @@
-// server.js
 const express = require('express');
 const fs = require('fs');
 const cors = require('cors');
+const path = require('path');
 const app = express();
 
 // Use the PORT provided by the environment or default to 3000
@@ -11,6 +11,9 @@ const HOST = '0.0.0.0';
 
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Endpoint to handle fingerprint data
 app.post('/fingerprint', (req, res) => {
@@ -40,6 +43,11 @@ app.post('/login', (req, res) => {
     } else {
         return res.status(401).json({ message: "Invalid username or password" });
     }
+});
+
+// Catch-all route to serve index.html for any other routes (useful for SPA)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Start the server
