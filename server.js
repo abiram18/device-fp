@@ -1,17 +1,30 @@
 const express = require('express');
 const fs = require('fs');
-const path = require('path');
 const cors = require('cors');
+const path = require('path');
 const app = express();
-
-// Use the dynamic port provided by Render or default to 3000
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 const HOST = '0.0.0.0';
 
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from the "public" directory
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Login route
+app.post('/login', (req, res) => {
+    const { username, password } = req.body;
+
+    // Simple check for hardcoded username and password
+    if (username === 'abi' && password === 'abi18') {
+        return res.status(200).send({ message: "Login successful" });
+    } else {
+        return res.status(401).json({ message: "Invalid username or password" });
+    }
+});
+
+// Fingerprint route (for logging device info)
 app.post('/fingerprint', (req, res) => {
     const { fingerprint, deviceInfo } = req.body;
     const entry = {
@@ -30,22 +43,11 @@ app.post('/fingerprint', (req, res) => {
     });
 });
 
-app.post('/login', (req, res) => {
-    const { username, password } = req.body;
-
-    if (username === 'abi' && password === 'abi18') {
-        return res.status(200).send("Login successful");
-    } else {
-        return res.status(401).json({ message: "Invalid username or password" });
-    }
-});
-
-// Serve static files from the 'public' directory
-app.get('/', (req, res) => {
+// Catch-all route to serve the login page (index.html)
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start the server
 app.listen(PORT, HOST, () => {
     console.log(`🚀 Server running on http://${HOST}:${PORT}`);
 });

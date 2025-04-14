@@ -38,6 +38,15 @@
   <button onclick="closePopup()">Close</button>
 </div>
 
+<!-- Login Form -->
+<form id="loginForm">
+  <label for="username">Username:</label>
+  <input type="text" id="username" name="username" required>
+  <label for="password">Password:</label>
+  <input type="password" id="password" name="password" required>
+  <button type="submit">Login</button>
+</form>
+
 <script>
   function showPopup(message) {
     document.getElementById('popup-message').innerText = message;
@@ -49,6 +58,7 @@
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('popup').style.display = 'none';
   }
+
   function getDistanceInKm(lat1, lon1, lat2, lon2) {
     const toRad = (value) => (value * Math.PI) / 180;
     const R = 6371; // Earth's radius in km
@@ -61,7 +71,7 @@
         Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
-}
+  }
 
   async function getIP() {
     try {
@@ -118,9 +128,9 @@
       };
 
       const hashInfo = { ...deviceInfo };
-delete hashInfo.location;
+      delete hashInfo.location;
 
-const currentFingerprint = await generateHash(hashInfo);
+      const currentFingerprint = await generateHash(hashInfo);
       const storedFingerprint = localStorage.getItem("deviceFingerprint");
 
       if (storedFingerprint) {
@@ -129,7 +139,7 @@ const currentFingerprint = await generateHash(hashInfo);
         } else {
           showPopup("⚠️ Warning: Fingerprint mismatch!");
           const storedLocation = JSON.parse(localStorage.getItem("storedLocation"));
-        if (storedLocation) {
+          if (storedLocation) {
             const dist = getDistanceInKm(
                 storedLocation.latitude, storedLocation.longitude,
                 geo.latitude, geo.longitude
@@ -139,29 +149,71 @@ const currentFingerprint = await generateHash(hashInfo);
             if (dist > 1) {
                 showPopup("⚠️ You are logging in from a new location! (" + dist.toFixed(2) + " km away)");
             }
+          }
         }
-        }
-
       } else {
         localStorage.setItem("deviceFingerprint", currentFingerprint);
         showPopup("🆕 First-time visitor. Fingerprint saved.");
         localStorage.setItem("storedLocation", JSON.stringify(geo));
       }
-
-      // Send to backend
-      fetch("https://device-fp.onrender.com", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          timestamp: new Date().toISOString(),
-          fingerprint: currentFingerprint,
-          deviceInfo
-        })
-      });
     } catch (error) {
       showPopup("❌ Location access denied. Entry restricted.");
     }
   }
+
+  // Login form submission
+  const loginForm = document.getElementById("loginForm");
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+
+    // Submit login info and fingerprint data
+    try {
+      const geo = await getGeolocation();
+      const ip = await getIP();
+      const deviceInfo = {
+        userAgent: navigator.userAgent,
+        screenResolution: `${window.screen.width}x${window.screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        language: navigator.language,
+        os: navigator.platform,
+        ip: ip,
+        location: geo
+      };
+
+      const hashInfo = { ...deviceInfo };
+      delete hashInfo.location;
+      const currentFingerprint = await generateHash(hashInfo);
+
+      fetch("https://device-fp.onrender.com/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          password,
+          timestamp: new Date().toISOString(),
+          fingerprint: currentFingerprint,
+          deviceInfo
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.message) {
+          alert(data.message);
+        } else {
+          localStorage.setItem("isLoggedIn", "true");
+          window.location.href = "/"; // Redirect to the main page after login
+        }
+      })
+      .catch(error => console.log("Error:", error));
+    } catch (error) {
+      console.log("Error in fingerprint generation:", error);
+    }
+  });
 
   // 👇 Check for login token in URL
   window.onload = () => {
