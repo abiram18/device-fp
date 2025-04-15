@@ -172,64 +172,61 @@
     }
   }
 
+  // Login form submission
+  const loginForm = document.getElementById("loginForm");
   loginForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const username = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
 
-  // Submit login info and fingerprint data
-  try {
-    const geo = await getGeolocation();
-    const ip = await getIP();
-    const deviceInfo = {
-      userAgent: navigator.userAgent,
-      screenResolution: `${window.screen.width}x${window.screen.height}`,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      language: navigator.language,
-      os: navigator.platform,
-      ip: ip,
-      location: geo
-    };
+    // Submit login info and fingerprint data
+    try {
+      const geo = await getGeolocation();
+      const ip = await getIP();
+      const deviceInfo = {
+        userAgent: navigator.userAgent,
+        screenResolution: `${window.screen.width}x${window.screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        language: navigator.language,
+        os: navigator.platform,
+        ip: ip,
+        location: geo
+      };
 
-    const hashInfo = { ...deviceInfo };
-    delete hashInfo.location;
-    const currentFingerprint = await generateHash(hashInfo);
+      const hashInfo = { ...deviceInfo };
+      delete hashInfo.location;
+      const currentFingerprint = await generateHash(hashInfo);
 
-    fetch("https://device-fp.onrender.com", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username,
-        timestamp: new Date().toISOString(),
-        fingerprint: currentFingerprint,
-        deviceInfo
+      fetch("https://device-fp.onrender.com", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          timestamp: new Date().toISOString(),
+          fingerprint: currentFingerprint,
+          deviceInfo
+        })
       })
-    })
-    .then(response => response.json())
-    .then(data => {
-      console.log("Login Response:", data);  // Log the response from the server
+      .then(response => response.json())
+      .then(data => {
+        if (data.message) {
+          alert(data.message);
+        } else {
+          localStorage.setItem("isLoggedIn", "true");
+          window.location.href = "/"; // Redirect to the main page after login
+        }
+      })
+      .catch(error => console.log("Error:", error));
+    } catch (error) {
+      console.log("Error in fingerprint generation:", error);
+    }
+  });
 
-      if (data.message) {
-        alert(data.message);
-      } else {
-        // Hide the login form and redirect
-        console.log("Login successful, hiding form...");
-        document.getElementById("loginForm").style.display = "none"; // Hide login form
-        localStorage.setItem("isLoggedIn", "true");
-        window.location.href = "/"; // Redirect to the main page after login
-      }
-    })
-    .catch(error => {
-      console.log("Error:", error);
-    });
-  } catch (error) {
-    console.log("Error in fingerprint generation:", error);
-  }
-});
-
+  // Sign-Up form submission
+const signupForm = document.getElementById("signupForm");
 signupForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -269,12 +266,6 @@ signupForm.addEventListener("submit", async (e) => {
       .then((response) => response.json())
       .then((data) => {
         alert(data.message);
-        if (data.message === "Sign up successful") {
-          // Hide sign-up form and show success message or redirect
-          document.getElementById("signupForm").style.display = "none"; // Hide sign-up form
-          localStorage.setItem("isLoggedIn", "true");
-          window.location.href = "/"; // Redirect to the main page after sign-up
-        }
       })
       .catch((error) => console.error("❌ Error during sign-up:", error));
   } catch (error) {
