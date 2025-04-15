@@ -146,7 +146,7 @@
             );
             console.log("Distance from saved location:", dist.toFixed(2), "km");
 
-            if (dist > 1) {
+            if (dist > 100) {
                 showPopup("⚠️ You are logging in from a new location! (" + dist.toFixed(2) + " km away)");
             }
           }
