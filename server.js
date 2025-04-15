@@ -17,7 +17,15 @@ mongoose.connect("mongodb+srv://abiram:abi18@cluster0.tklkrqn.mongodb.net/device
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // Schema
+const User = mongoose.model("User", new mongoose.Schema({
+  username: String,
+  password: String,
+  primaryFingerprint: String,
+  primaryDeviceInfo: Object,
+}));
+
 const Fingerprint = mongoose.model("Fingerprint", new mongoose.Schema({
+  userId: mongoose.Schema.Types.ObjectId,
   timestamp: String,
   fingerprint: String,
   deviceInfo: Object,
@@ -30,6 +38,40 @@ app.get("/", (req, res) => {
 
 app.get("/login", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
+app.post("/signup", async (req, res) => {
+  const { username, password, timestamp, fingerprint, deviceInfo } = req.body;
+
+  try {
+    // check if username already exists
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ message: "Username already exists" });
+    }
+
+    // create new user with primary device details
+    const user = new User({
+      username,
+      password,
+      primaryFingerprint: fingerprint,
+      primaryDeviceInfo: deviceInfo,
+    });
+    await user.save();
+
+    const fp = new Fingerprint({
+      userId: user._id,
+      timestamp,
+      fingerprint,
+      deviceInfo,
+    });
+    await fp.save();
+
+    res.json({ message: "Sign-up successful" });
+  } catch (err) {
+    console.error("❌ Error in sign-up:", err);
+    res.status(500).json({ message: "Server error during sign-up" });
+  }
 });
 
 app.post("/", async (req, res) => {
@@ -52,25 +94,63 @@ app.post("/", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   const { username, password, timestamp, fingerprint, deviceInfo } = req.body;
-  console.log("Received at login:", req.body);
 
-  if (username === "admin" && password === "password") {
-    try {
-      // Save fingerprint on successful login
-      const fp = new Fingerprint({
-        timestamp,
-        fingerprint,
-        deviceInfo,
-      });
-      await fp.save();
-      console.log("✅ Fingerprint saved on login");
-    } catch (err) {
-      console.error("❌ Error saving fingerprint on login:", err);
+  try {
+    const user = await User.findOne({ username, password });
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
+
+    const isPrimary = user.primaryFingerprint === fingerprint;
+
+    const fp = new Fingerprint({
+      userId: user._id,
+      timestamp,
+      fingerprint,
+      deviceInfo,
+    });
+    await fp.save();
+
+    res.json({
+      message: isPrimary ? "✅ Logged in from primary device" : "⚠️ Logged in from a secondary device",
+    });
+  } catch (err) {
+    console.error("❌ Error in login:", err);
+    res.status(500).json({ message: "Login failed" });
+  }
+});
+
+app.post("/signup", async (req, res) => {
+  const { username, password, timestamp, fingerprint, deviceInfo } = req.body;
+
+  try {
+    // Check if the user already exists
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ message: "Username already exists" });
     }
 
-    res.json({ message: "Login successful" });
-  } else {
-    res.status(401).json({ message: "Invalid credentials" });
+    // Create new user with primary fingerprint and device info
+    const user = new User({
+      username,
+      password,
+      primaryFingerprint: fingerprint,
+      primaryDeviceInfo: deviceInfo,
+    });
+    await user.save();
+
+    // Save fingerprint record
+    const fp = new Fingerprint({
+      userId: user._id,
+      timestamp,
+      fingerprint,
+      deviceInfo,
+    });
+    await fp.save();
+
+    console.log("✅ New user registered with primary device");
+    res.json({ message: "Sign-up successful" });
+  } catch (err) {
+    console.error("❌ Error in sign-up:", err);
+    res.status(500).json({ message: "Server error during sign-up" });
   }
 });
 

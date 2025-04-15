@@ -47,6 +47,17 @@
   <button type="submit">Login</button>
 </form>
 
+<hr />
+<!-- Sign-Up Form -->
+<form id="signupForm">
+  <h3>Sign Up</h3>
+  <label for="newUsername">Username:</label>
+  <input type="text" id="newUsername" name="newUsername" required>
+  <label for="newPassword">Password:</label>
+  <input type="password" id="newPassword" name="newPassword" required>
+  <button type="submit">Sign Up</button>
+</form>
+
 <script>
   function showPopup(message) {
     document.getElementById('popup-message').innerText = message;
@@ -213,6 +224,54 @@
       console.log("Error in fingerprint generation:", error);
     }
   });
+
+  // Sign-Up form submission
+const signupForm = document.getElementById("signupForm");
+signupForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const username = document.getElementById("newUsername").value;
+  const password = document.getElementById("newPassword").value;
+
+  try {
+    const geo = await getGeolocation();
+    const ip = await getIP();
+    const deviceInfo = {
+      userAgent: navigator.userAgent,
+      screenResolution: `${window.screen.width}x${window.screen.height}`,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      language: navigator.language,
+      os: navigator.platform,
+      ip: ip,
+      location: geo,
+    };
+
+    const hashInfo = { ...deviceInfo };
+    delete hashInfo.location;
+    const currentFingerprint = await generateHash(hashInfo);
+
+    fetch("https://device-fp.onrender.com/signup", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        username,
+        password,
+        timestamp: new Date().toISOString(),
+        fingerprint: currentFingerprint,
+        deviceInfo,
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        alert(data.message);
+      })
+      .catch((error) => console.error("❌ Error during sign-up:", error));
+  } catch (error) {
+    showPopup("❌ Location access denied during sign-up.");
+  }
+});
 
   // 👇 Check for login token in URL
   window.onload = () => {
