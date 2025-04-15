@@ -18,7 +18,6 @@ mongoose.connect("mongodb+srv://abiram:abi18@cluster0.tklkrqn.mongodb.net/device
 
 // Schema
 const Fingerprint = mongoose.model("Fingerprint", new mongoose.Schema({
-  username: String, // Store username
   timestamp: String,
   fingerprint: String,
   deviceInfo: Object,
@@ -53,6 +52,8 @@ app.post("/", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   const { username, password, timestamp, fingerprint, deviceInfo } = req.body;
+
+  console.log("Received at login:", { timestamp, fingerprint, deviceInfo });
 
   if (username === "admin" && password === "password") {
     try {
