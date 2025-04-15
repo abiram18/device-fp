@@ -52,8 +52,7 @@ app.post("/", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   const { username, password, timestamp, fingerprint, deviceInfo } = req.body;
-
-  console.log("Received at login:", { timestamp, fingerprint, deviceInfo });
+  console.log("Received at login:", req.body);
 
   if (username === "admin" && password === "password") {
     try {
