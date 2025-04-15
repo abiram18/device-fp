@@ -18,6 +18,7 @@ mongoose.connect("mongodb+srv://abiram:abi18@cluster0.tklkrqn.mongodb.net/device
 
 // Schema
 const Fingerprint = mongoose.model("Fingerprint", new mongoose.Schema({
+  username: String, // Store username
   timestamp: String,
   fingerprint: String,
   deviceInfo: Object,
@@ -33,10 +34,11 @@ app.get("/login", (req, res) => {
 });
 
 app.post("/", async (req, res) => {
-  const { timestamp, fingerprint, deviceInfo } = req.body;
+  const { username, timestamp, fingerprint, deviceInfo } = req.body;
 
   try {
     const fp = new Fingerprint({
+      username,
       timestamp,
       fingerprint,
       deviceInfo,
