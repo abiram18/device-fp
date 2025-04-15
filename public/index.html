@@ -93,25 +93,25 @@
   }
 
   function getGeolocation() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject("Geolocation not supported");
-    }
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject("Geolocation not supported");
+      }
 
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-      },
-      error => {
-        reject(error.message);
-      },
-      { timeout: 10000 }  // Increased timeout to 10 seconds
-    );
-  });
-}
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        error => {
+          reject(error.message);
+        },
+        { timeout: 5000 }
+      );
+    });
+  }
 
   async function checkFingerprint() {
     try {
@@ -187,17 +187,16 @@
       delete hashInfo.location;
       const currentFingerprint = await generateHash(hashInfo);
 
-      fetch("https://device-fp.onrender.com/login", {
+      fetch("https://device-fp.onrender.com", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-        username,
-        password, // ✅ include password here
-        timestamp: new Date().toISOString(),
-        fingerprint: currentFingerprint,
-        deviceInfo
+          username,
+          timestamp: new Date().toISOString(),
+          fingerprint: currentFingerprint,
+          deviceInfo
         })
       })
       .then(response => response.json())
