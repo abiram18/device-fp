@@ -52,22 +52,23 @@ app.post("/", async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
-  const { username, password, fingerprint, timestamp, deviceInfo } = req.body;
+  const { username, password, timestamp, fingerprint, deviceInfo } = req.body;
 
   if (username === "admin" && password === "password") {
     try {
+      // Save fingerprint on successful login
       const fp = new Fingerprint({
         timestamp,
         fingerprint,
         deviceInfo,
       });
       await fp.save();
-
-      res.json({ message: "Login successful" });
+      console.log("✅ Fingerprint saved on login");
     } catch (err) {
-      console.error("❌ Error saving fingerprint:", err);
-      res.status(500).json({ error: "Login successful, but failed to save fingerprint" });
+      console.error("❌ Error saving fingerprint on login:", err);
     }
+
+    res.json({ message: "Login successful" });
   } else {
     res.status(401).json({ message: "Invalid credentials" });
   }
