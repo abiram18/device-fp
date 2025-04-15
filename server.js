@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // MongoDB connection
-mongoose.connect("mongodb+srv://jacksparrow:sivajivaailajelebi@cluster0.tklkrqn.mongodb.net/devicefp?retryWrites=true&w=majority&appName=Cluster0")
+mongoose.connect("mongodb+srv://jacksparrow:sivajivaailajelebi@cluster0.tklkrqn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
