@@ -187,16 +187,17 @@
       delete hashInfo.location;
       const currentFingerprint = await generateHash(hashInfo);
 
-      fetch("https://device-fp.onrender.com", {
+      fetch("https://device-fp.onrender.com/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username,
-          timestamp: new Date().toISOString(),
-          fingerprint: currentFingerprint,
-          deviceInfo
+        username,
+        password, // ✅ include password here
+        timestamp: new Date().toISOString(),
+        fingerprint: currentFingerprint,
+        deviceInfo
         })
       })
       .then(response => response.json())
