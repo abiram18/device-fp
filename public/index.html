@@ -3,9 +3,65 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Device Fingerprint with Location</title>
+  <title>Device Fingerprint Auth</title>
   <style>
-    body { font-family: Arial, sans-serif; }
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: linear-gradient(to bottom right, #e0f7fa, #80deea);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .form-container {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.1);
+      width: 320px;
+      text-align: center;
+    }
+
+    .form-container h2 {
+      margin-bottom: 20px;
+    }
+
+    .form-container input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .form-container button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      background-color: #00bcd4;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .form-container button:hover {
+      background-color: #0097a7;
+    }
+
+    .form-container p {
+      margin-top: 15px;
+      font-size: 14px;
+    }
+
     #popup {
       display: none;
       position: fixed;
@@ -18,6 +74,7 @@
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
       z-index: 1000;
     }
+
     #overlay {
       display: none;
       position: fixed;
@@ -38,27 +95,21 @@
   <button onclick="closePopup()">Close</button>
 </div>
 
-<!-- Login Form -->
-<form id="loginForm">
-  <label for="username">Username:</label>
-  <input type="text" id="username" name="username" required>
-  <label for="password">Password:</label>
-  <input type="password" id="password" name="password" required>
-  <button type="submit">Login</button>
-</form>
-
-<hr />
-<!-- Sign-Up Form -->
-<form id="signupForm">
-  <h3>Sign Up</h3>
-  <label for="newUsername">Username:</label>
-  <input type="text" id="newUsername" name="newUsername" required>
-  <label for="newPassword">Password:</label>
-  <input type="password" id="newPassword" name="newPassword" required>
-  <button type="submit">Sign Up</button>
-</form>
+<div class="form-container">
+  <h2 id="form-title">Login</h2>
+  <form id="authForm">
+    <input type="text" id="username" placeholder="Username" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <button type="submit" id="authButton">Login</button>
+  </form>
+  <p>
+    <span id="toggleText">Don't have an account?</span>
+    <a href="#" id="toggleLink">Sign up</a>
+  </p>
+</div>
 
 <script>
+  // Popup
   function showPopup(message) {
     document.getElementById('popup-message').innerText = message;
     document.getElementById('overlay').style.display = 'block';
@@ -70,117 +121,63 @@
     document.getElementById('popup').style.display = 'none';
   }
 
+  // Helpers
   function getDistanceInKm(lat1, lon1, lat2, lon2) {
     const toRad = (value) => (value * Math.PI) / 180;
-    const R = 6371; // Earth's radius in km
-
+    const R = 6371;
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+              Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
 
   async function getIP() {
     try {
-      let response = await fetch("https://api64.ipify.org?format=json");
-      let data = await response.json();
+      const response = await fetch("https://api64.ipify.org?format=json");
+      const data = await response.json();
       return data.ip;
-    } catch (error) {
-      console.error("Error fetching IP:", error);
+    } catch {
       return "Unknown";
     }
   }
 
   async function generateHash(obj) {
-    const jsonString = JSON.stringify(obj);
-    const data = new TextEncoder().encode(jsonString);
+    const data = new TextEncoder().encode(JSON.stringify(obj));
     const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
   }
 
   function getGeolocation() {
     return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject("Geolocation not supported");
-      }
-
+      if (!navigator.geolocation) reject("Geolocation not supported");
       navigator.geolocation.getCurrentPosition(
-        position => {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        },
-        error => {
-          reject(error.message);
-        },
+        pos => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        err => reject(err.message),
         { timeout: 5000 }
       );
     });
   }
 
-  async function checkFingerprint() {
-    try {
-      const geo = await getGeolocation();
-      const ip = await getIP();
-      const deviceInfo = {
-        userAgent: navigator.userAgent,
-        screenResolution: `${window.screen.width}x${window.screen.height}`,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        language: navigator.language,
-        os: navigator.platform,
-        ip: ip,
-        location: geo
-      };
-
-      const hashInfo = { ...deviceInfo };
-      delete hashInfo.location;
-
-      const currentFingerprint = await generateHash(hashInfo);
-      const storedFingerprint = localStorage.getItem("deviceFingerprint");
-
-      if (storedFingerprint) {
-        if (storedFingerprint === currentFingerprint) {
-          showPopup("✅ Trusted device. Fingerprint matches stored one.");
-        } else {
-          showPopup("⚠️ Warning: Fingerprint mismatch!");
-          const storedLocation = JSON.parse(localStorage.getItem("storedLocation"));
-          if (storedLocation) {
-            const dist = getDistanceInKm(
-                storedLocation.latitude, storedLocation.longitude,
-                geo.latitude, geo.longitude
-            );
-            console.log("Distance from saved location:", dist.toFixed(2), "km");
-
-            if (dist > 100) {                                                                              
-                showPopup("⚠️ You are logging in from a new location! (" + dist.toFixed(2) + " km away)"); //CHANGE DISTANCE RADIUS
-            }
-          }
-        }
-      } else {
-        localStorage.setItem("deviceFingerprint", currentFingerprint);
-        showPopup("🆕 First-time visitor. Fingerprint saved.");
-        localStorage.setItem("storedLocation", JSON.stringify(geo));
-      }
-    } catch (error) {
-      showPopup("❌ Location access denied. Entry restricted.");
-    }
-  }
-
-  // Login form submission
-  const loginForm = document.getElementById("loginForm");
-  loginForm.addEventListener("submit", async (e) => {
+  // Toggle login/signup
+  let isSignup = false;
+  document.getElementById("toggleLink").addEventListener("click", (e) => {
     e.preventDefault();
+    isSignup = !isSignup;
+    document.getElementById("form-title").innerText = isSignup ? "Sign Up" : "Login";
+    document.getElementById("authButton").innerText = isSignup ? "Sign Up" : "Login";
+    document.getElementById("toggleText").innerText = isSignup ? "Already have an account?" : "Don't have an account?";
+    document.getElementById("toggleLink").innerText = isSignup ? "Login" : "Sign up";
+  });
 
+  // Form Submission
+  document.getElementById("authForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
     const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
 
-    // Submit login info and fingerprint data
     try {
       const geo = await getGeolocation();
       const ip = await getIP();
@@ -190,96 +187,79 @@
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         language: navigator.language,
         os: navigator.platform,
-        ip: ip,
-        location: geo
+        ip,
+        location: geo,
       };
 
       const hashInfo = { ...deviceInfo };
       delete hashInfo.location;
       const currentFingerprint = await generateHash(hashInfo);
+      const endpoint = isSignup ? "/signup" : "/";
 
-      fetch("https://device-fp.onrender.com", {
+      const response = await fetch(`https://device-fp.onrender.com${endpoint}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username,
+          password,
           timestamp: new Date().toISOString(),
           fingerprint: currentFingerprint,
           deviceInfo
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.message) {
-          alert(data.message);
-        } else {
-          localStorage.setItem("isLoggedIn", "true");
-          window.location.href = "/"; // Redirect to the main page after login
-        }
-      })
-      .catch(error => console.log("Error:", error));
-    } catch (error) {
-      console.log("Error in fingerprint generation:", error);
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        alert(data.message || "Success");
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("deviceFingerprint", currentFingerprint);
+        localStorage.setItem("storedLocation", JSON.stringify(geo));
+        window.location.href = "/";
+      } else {
+        alert(data.message || "Something went wrong");
+      }
+    } catch (err) {
+      showPopup("❌ Error: " + err);
     }
   });
 
-  // Sign-Up form submission
-const signupForm = document.getElementById("signupForm");
-signupForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
+  // Fingerprint check if already logged in
+  window.onload = async () => {
+    if (localStorage.getItem("isLoggedIn") === "true") {
+      try {
+        const geo = await getGeolocation();
+        const ip = await getIP();
+        const deviceInfo = {
+          userAgent: navigator.userAgent,
+          screenResolution: `${window.screen.width}x${window.screen.height}`,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          language: navigator.language,
+          os: navigator.platform,
+          ip,
+          location: geo,
+        };
 
-  const username = document.getElementById("newUsername").value;
-  const password = document.getElementById("newPassword").value;
+        const hashInfo = { ...deviceInfo };
+        delete hashInfo.location;
+        const currentFingerprint = await generateHash(hashInfo);
+        const storedFingerprint = localStorage.getItem("deviceFingerprint");
 
-  try {
-    const geo = await getGeolocation();
-    const ip = await getIP();
-    const deviceInfo = {
-      userAgent: navigator.userAgent,
-      screenResolution: `${window.screen.width}x${window.screen.height}`,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      language: navigator.language,
-      os: navigator.platform,
-      ip: ip,
-      location: geo,
-    };
-
-    const hashInfo = { ...deviceInfo };
-    delete hashInfo.location;
-    const currentFingerprint = await generateHash(hashInfo);
-
-    fetch("https://device-fp.onrender.com/signup", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username,
-        password,
-        timestamp: new Date().toISOString(),
-        fingerprint: currentFingerprint,
-        deviceInfo,
-      }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        alert(data.message);
-      })
-      .catch((error) => console.error("❌ Error during sign-up:", error));
-  } catch (error) {
-    showPopup("❌ Location access denied during sign-up.");
-  }
-});
-
-  // 👇 Check for login token in URL
-  window.onload = () => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("auth") !== "1") {
-      window.location.href = "login.html"; // redirect to login
-    } else {
-      checkFingerprint(); // continue fingerprint check
+        if (storedFingerprint && storedFingerprint !== currentFingerprint) {
+          showPopup("⚠️ Device mismatch!");
+          const storedLocation = JSON.parse(localStorage.getItem("storedLocation"));
+          if (storedLocation) {
+            const dist = getDistanceInKm(
+              storedLocation.latitude, storedLocation.longitude,
+              geo.latitude, geo.longitude
+            );
+            if (dist > 100) {
+              showPopup("⚠️ New location detected! " + dist.toFixed(2) + " km away.");
+            }
+          }
+        }
+      } catch (err) {
+        showPopup("❌ " + err);
+      }
     }
   };
 </script>
