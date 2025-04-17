@@ -3,8 +3,8 @@ const nodemailer = require("nodemailer");
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "yourgmail@gmail.com", // Your newly created Gmail
-    pass: "your-app-password",   // App password from step 3
+    user: "authenticatordevicefp@gmail.com", // Replace with your Gmail
+    pass: "bese vged qggk irwz",   // Replace with your app password
   },
 });
 
@@ -13,10 +13,16 @@ const sendVerificationEmail = async (email, code) => {
     from: "yourgmail@gmail.com",
     to: email,
     subject: "🔐 Login Verification Code",
-    html: `<h2>Your code: <span style="color:blue;">${code}</span></h2>`,
+    html: `<h2>Your verification code is: <span style="color:blue;">${code}</span></h2>`,
   };
 
-  await transporter.sendMail(mailOptions);
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Verification code sent to ${email}`);
+  } catch (err) {
+    console.error("❌ Failed to send email:", err);
+    throw err;
+  }
 };
 
 module.exports = sendVerificationEmail;
