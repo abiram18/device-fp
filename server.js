@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const path = require("path");
-const sendVerificationEmail = require("./emailService"); // 💌
+const sendVerificationEmail = require("./emailService");
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -13,7 +13,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // MongoDB connection
-mongoose.connect("mongodb+srv://abiram:abi18@cluster0.tklkrqn.mongodb.net/deviceFP?retryWrites=true&w=majority&appName=Cluster0")
+mongoose.connect("your_mongo_url")
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
@@ -21,7 +21,7 @@ mongoose.connect("mongodb+srv://abiram:abi18@cluster0.tklkrqn.mongodb.net/device
 const User = mongoose.model("User", new mongoose.Schema({
   username: String,
   password: String,
-  email: String, // ✅ added email
+  email: String,
   primaryFingerprint: String,
   primaryDeviceInfo: Object,
 }));
@@ -34,9 +34,10 @@ const Fingerprint = mongoose.model("Fingerprint", new mongoose.Schema({
 }));
 
 // Routes
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+app.get("/login", (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
+app.get("/verification-sent", (req, res) => res.sendFile(path.join(__dirname, "public", "verification.html")));
+app.get("/registered", (req, res) => res.sendFile(path.join(__dirname, "public", "registered.html")));
 
 app.post("/signup", async (req, res) => {
   const { username, password, email, timestamp, fingerprint, deviceInfo } = req.body;
@@ -50,7 +51,7 @@ app.post("/signup", async (req, res) => {
     const user = new User({
       username,
       password,
-      email, // ✅ store email
+      email,
       primaryFingerprint: fingerprint,
       primaryDeviceInfo: deviceInfo,
     });
@@ -64,29 +65,10 @@ app.post("/signup", async (req, res) => {
     });
     await fp.save();
 
-    console.log("✅ New user registered with primary device");
-    res.json({ message: "Sign-up successful" });
+    res.redirect("/registered.html");
   } catch (err) {
     console.error("❌ Error in sign-up:", err);
     res.status(500).json({ message: "Server error during sign-up" });
-  }
-});
-
-app.post("/", async (req, res) => {
-  const { username, timestamp, fingerprint, deviceInfo } = req.body;
-
-  try {
-    const fp = new Fingerprint({
-      username,
-      timestamp,
-      fingerprint,
-      deviceInfo,
-    });
-    await fp.save();
-    res.json({ message: "Fingerprint saved to DB" });
-  } catch (err) {
-    console.error("❌ Error saving fingerprint:", err);
-    res.status(500).json({ error: "Failed to save fingerprint" });
   }
 });
 
@@ -108,19 +90,11 @@ app.post("/login", async (req, res) => {
     await fp.save();
 
     if (isPrimary) {
-      return res.json({
-        message: "✅ Logged in from primary device",
-      });
+      return res.json({ message: "✅ Logged in from primary device" });
     } else {
-      // 🔐 Generate and send verification code
-      const verificationCode = Math.floor(100000 + Math.random() * 900000);
-      await sendVerificationEmail(user.email, verificationCode);
-
-      return res.json({
-        message: "⚠️ Logged in from secondary device. Verification code sent to email.",
-        requireVerification: true,
-        codeSent: true,
-      });
+      const code = Math.floor(100000 + Math.random() * 900000); // 6-digit code
+      await sendVerificationEmail(user.email, code);
+      return res.redirect("/email-sent.html");
     }
   } catch (err) {
     console.error("❌ Error in login:", err);

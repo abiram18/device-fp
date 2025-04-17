@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Device Fingerprint Auth</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; }
     body {
       font-family: Arial, sans-serif;
       margin: 0;
@@ -18,7 +15,6 @@
       align-items: center;
       height: 100vh;
     }
-
     .form-container {
       background: white;
       padding: 40px;
@@ -27,11 +23,7 @@
       width: 320px;
       text-align: center;
     }
-
-    .form-container h2 {
-      margin-bottom: 20px;
-    }
-
+    .form-container h2 { margin-bottom: 20px; }
     .form-container input {
       width: 100%;
       padding: 10px;
@@ -40,7 +32,6 @@
       border-radius: 8px;
       font-size: 14px;
     }
-
     .form-container button {
       width: 100%;
       padding: 10px;
@@ -52,16 +43,10 @@
       cursor: pointer;
       font-weight: bold;
     }
-
     .form-container button:hover {
       background-color: #0097a7;
     }
-
-    .form-container p {
-      margin-top: 15px;
-      font-size: 14px;
-    }
-
+    .form-container p { margin-top: 15px; font-size: 14px; }
     #popup {
       display: none;
       position: fixed;
@@ -74,7 +59,6 @@
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
       z-index: 1000;
     }
-
     #overlay {
       display: none;
       position: fixed;
@@ -99,6 +83,7 @@
   <h2 id="form-title">Login</h2>
   <form id="authForm">
     <input type="text" id="username" placeholder="Username" required />
+    <input type="email" id="email" placeholder="Email" style="display:none;" />
     <input type="password" id="password" placeholder="Password" required />
     <button type="submit" id="authButton">Login</button>
   </form>
@@ -109,7 +94,6 @@
 </div>
 
 <script>
-  // Popup
   function showPopup(message) {
     document.getElementById('popup-message').innerText = message;
     document.getElementById('overlay').style.display = 'block';
@@ -121,27 +105,21 @@
     document.getElementById('popup').style.display = 'none';
   }
 
-  // Helpers
   function getDistanceInKm(lat1, lon1, lat2, lon2) {
-    const toRad = (value) => (value * Math.PI) / 180;
+    const toRad = (v) => (v * Math.PI) / 180;
     const R = 6371;
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
-    const a = Math.sin(dLat / 2) ** 2 +
-              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-              Math.sin(dLon / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
   async function getIP() {
     try {
-      const response = await fetch("https://api64.ipify.org?format=json");
-      const data = await response.json();
+      const res = await fetch("https://api64.ipify.org?format=json");
+      const data = await res.json();
       return data.ip;
-    } catch {
-      return "Unknown";
-    }
+    } catch { return "Unknown"; }
   }
 
   async function generateHash(obj) {
@@ -161,7 +139,7 @@
     });
   }
 
-  // Toggle login/signup
+  // Toggle form
   let isSignup = false;
   document.getElementById("toggleLink").addEventListener("click", (e) => {
     e.preventDefault();
@@ -170,12 +148,13 @@
     document.getElementById("authButton").innerText = isSignup ? "Sign Up" : "Login";
     document.getElementById("toggleText").innerText = isSignup ? "Already have an account?" : "Don't have an account?";
     document.getElementById("toggleLink").innerText = isSignup ? "Login" : "Sign up";
+    document.getElementById("email").style.display = isSignup ? "block" : "none";
   });
 
-  // Form Submission
   document.getElementById("authForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const username = document.getElementById("username").value;
+    const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
 
     try {
@@ -193,26 +172,29 @@
 
       const hashInfo = { ...deviceInfo };
       delete hashInfo.location;
-      const currentFingerprint = await generateHash(hashInfo);
-      const endpoint = isSignup ? "/signup" : "/";
+      const fingerprint = await generateHash(hashInfo);
+      const endpoint = isSignup ? "/signup" : "/login";
+
+      const payload = {
+        username,
+        password,
+        timestamp: new Date().toISOString(),
+        fingerprint,
+        deviceInfo,
+      };
+      if (isSignup) payload.email = email;
 
       const response = await fetch(`https://device-fp.onrender.com${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username,
-          password,
-          timestamp: new Date().toISOString(),
-          fingerprint: currentFingerprint,
-          deviceInfo
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
       if (response.ok) {
         alert(data.message || "Success");
         localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("deviceFingerprint", currentFingerprint);
+        localStorage.setItem("deviceFingerprint", fingerprint);
         localStorage.setItem("storedLocation", JSON.stringify(geo));
         window.location.href = "/";
       } else {
@@ -223,7 +205,6 @@
     }
   });
 
-  // Fingerprint check if already logged in
   window.onload = async () => {
     if (localStorage.getItem("isLoggedIn") === "true") {
       try {
