@@ -65,7 +65,7 @@ app.post("/signup", async (req, res) => {
     });
     await fp.save();
 
-    res.redirect("/registered.html");
+    res.json({ message: "✅ Sign-up successful" });
   } catch (err) {
     console.error("❌ Error in sign-up:", err);
     res.status(500).json({ message: "Server error during sign-up" });
@@ -94,7 +94,7 @@ app.post("/login", async (req, res) => {
     } else {
       const code = Math.floor(100000 + Math.random() * 900000); // 6-digit code
       await sendVerificationEmail(user.email, code);
-      return res.redirect("/email-sent.html");
+      return res.json({ message: "⚠️ Logged in from secondary device. Verification email sent." });
     }
   } catch (err) {
     console.error("❌ Error in login:", err);
