@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const path = require("path");
+const sendVerificationEmail = require("./emailService"); // 💌
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -16,10 +17,11 @@ mongoose.connect("mongodb+srv://abiram:abi18@cluster0.tklkrqn.mongodb.net/device
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// Schema
+// Schemas
 const User = mongoose.model("User", new mongoose.Schema({
   username: String,
   password: String,
+  email: String, // ✅ added email
   primaryFingerprint: String,
   primaryDeviceInfo: Object,
 }));
@@ -31,18 +33,13 @@ const Fingerprint = mongoose.model("Fingerprint", new mongoose.Schema({
   deviceInfo: Object,
 }));
 
-// Serve HTML
+// Routes
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.get("/login", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "login.html"));
-});
-
-// 🔐 Signup
 app.post("/signup", async (req, res) => {
-  const { username, password, timestamp, fingerprint, deviceInfo } = req.body;
+  const { username, password, email, timestamp, fingerprint, deviceInfo } = req.body;
 
   try {
     const existingUser = await User.findOne({ username });
@@ -53,6 +50,7 @@ app.post("/signup", async (req, res) => {
     const user = new User({
       username,
       password,
+      email, // ✅ store email
       primaryFingerprint: fingerprint,
       primaryDeviceInfo: deviceInfo,
     });
@@ -74,13 +72,30 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// 🔑 Login
 app.post("/", async (req, res) => {
   const { username, timestamp, fingerprint, deviceInfo } = req.body;
 
   try {
-    const user = await User.findOne({ username });
-    if (!user) return res.status(401).json({ message: "Invalid username" });
+    const fp = new Fingerprint({
+      username,
+      timestamp,
+      fingerprint,
+      deviceInfo,
+    });
+    await fp.save();
+    res.json({ message: "Fingerprint saved to DB" });
+  } catch (err) {
+    console.error("❌ Error saving fingerprint:", err);
+    res.status(500).json({ error: "Failed to save fingerprint" });
+  }
+});
+
+app.post("/login", async (req, res) => {
+  const { username, password, timestamp, fingerprint, deviceInfo } = req.body;
+
+  try {
+    const user = await User.findOne({ username, password });
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
     const isPrimary = user.primaryFingerprint === fingerprint;
 
@@ -92,14 +107,24 @@ app.post("/", async (req, res) => {
     });
     await fp.save();
 
-    res.json({
-      message: isPrimary
-        ? "✅ Logged in from primary device"
-        : "⚠️ Logged in from a secondary device",
-    });
+    if (isPrimary) {
+      return res.json({
+        message: "✅ Logged in from primary device",
+      });
+    } else {
+      // 🔐 Generate and send verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000);
+      await sendVerificationEmail(user.email, verificationCode);
+
+      return res.json({
+        message: "⚠️ Logged in from secondary device. Verification code sent to email.",
+        requireVerification: true,
+        codeSent: true,
+      });
+    }
   } catch (err) {
-    console.error("❌ Error saving fingerprint:", err);
-    res.status(500).json({ error: "Failed to log fingerprint" });
+    console.error("❌ Error in login:", err);
+    res.status(500).json({ message: "Login failed" });
   }
 });
 
