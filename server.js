@@ -3,6 +3,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const path = require("path");
 const sendVerificationEmail = require("./emailService");
+const verificationCodes = new Map();
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -98,15 +99,17 @@ app.post("/login", async (req, res) => {
     if (isPrimary) {
       return res.json({ message: "✅ Logged in from primary device" });
     } else {
-      const code = Math.floor(100000 + Math.random() * 900000); // 6-digit code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
       console.log("📧 Sending code to:", user.email, "code:", code);
       try {
         await sendVerificationEmail(user.email, code);
+        verificationCodes.set(username, code);
+        setTimeout(() => verificationCodes.delete(username), 5 * 60 * 1000); // 5 minutes expiry
       } catch (emailErr) {
         console.error("❌ Email send error:", emailErr);
         return res.status(500).json({ message: "Email sending failed" });
       }
-      return res.json({ message: "⚠️ Logged in from secondary device. Verification email sent." });
+      return res.json({ message: "Verification code sent. Please check your email." });
     }
   } catch (err) {
     console.error("❌ Error in login:", err);
@@ -116,4 +119,16 @@ app.post("/login", async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+});
+
+app.post("/verify", (req, res) => {
+  const { username, code } = req.body;
+  const savedCode = verificationCodes.get(username);
+
+  if (savedCode && savedCode === code) {
+    verificationCodes.delete(username);
+    return res.json({ success: true, message: "✅ Verification successful!" });
+  } else {
+    return res.json({ success: false, message: "❌ Invalid or expired code." });
+  }
 });
