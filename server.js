@@ -76,10 +76,16 @@ app.post("/login", async (req, res) => {
   const { username, password, timestamp, fingerprint, deviceInfo } = req.body;
 
   try {
+    console.log("🔐 Login attempt:", { username, fingerprint });
+
     const user = await User.findOne({ username, password });
-    if (!user) return res.status(401).json({ message: "Invalid credentials" });
+    if (!user) {
+      console.log("❌ No user found for", username);
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
     const isPrimary = user.primaryFingerprint === fingerprint;
+    console.log("🔎 Fingerprint match:", isPrimary);
 
     const fp = new Fingerprint({
       userId: user._id,
@@ -93,7 +99,13 @@ app.post("/login", async (req, res) => {
       return res.json({ message: "✅ Logged in from primary device" });
     } else {
       const code = Math.floor(100000 + Math.random() * 900000); // 6-digit code
-      await sendVerificationEmail(user.email, code);
+      console.log("📧 Sending code to:", user.email, "code:", code);
+      try {
+        await sendVerificationEmail(user.email, code);
+      } catch (emailErr) {
+        console.error("❌ Email send error:", emailErr);
+        return res.status(500).json({ message: "Email sending failed" });
+      }
       return res.json({ message: "⚠️ Logged in from secondary device. Verification email sent." });
     }
   } catch (err) {
